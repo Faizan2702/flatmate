@@ -1,0 +1,1457 @@
+
+
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flatmate: AI Flat Broker Chatbot Prototype</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* slate-50 */
+            color: #334155; /* slate-700 */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow-x: hidden; /* Prevent horizontal scroll */
+        }
+        .page-container {
+            width: 100%;
+            max-width: 800px;
+            background-color: #ffffff;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            min-height: 90vh; /* Ensure it takes up most of the viewport */
+        }
+        .hidden {
+            display: none !important;
+        }
+        /* Page specific styling for welcome */
+        .page {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            text-align: center;
+        }
+        /* Welcome Animation */
+        @keyframes fadeInScale {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .welcome-animation {
+            animation: fadeInScale 1s ease-out forwards;
+        }
+        /* Message Box styles - common to all pages */
+        .message-box {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            max-width: 400px;
+            text-align: center;
+        }
+        .message-box-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            display: none;
+        }
+        .message-box button {
+            background-color: #3b82f6;
+            color: white;
+            padding: 0.6rem 1.2rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .message-box button:hover {
+            background-color: #2563eb;
+        }
+        /* Chat specific styles */
+        .chat-history {
+            flex-grow: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            background-color: #eef1f5; /* Light grey background for chat area */
+        }
+        .message {
+            max-width: 80%;
+            padding: 0.75rem 1rem;
+            border-radius: 0.75rem;
+            word-wrap: break-word;
+        }
+        .user-message {
+            align-self: flex-end;
+            background-color: #3b82f6; /* Blue */
+            color: white;
+            border-bottom-right-radius: 0.25rem;
+        }
+        .bot-message {
+            align-self: flex-start;
+            background-color: #e2e8f0; /* Light gray */
+            color: #334155;
+            border-bottom-left-radius: 0.25rem;
+        }
+        .chat-input-area {
+            display: flex;
+            padding: 1.5rem;
+            border-top: 1px solid #e2e8f0;
+            background-color: #ffffff;
+        }
+        .chat-input {
+            flex-grow: 1;
+            padding: 0.75rem 1rem;
+            border: 1px solid #cbd5e1;
+            border-radius: 0.75rem;
+            outline: none;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+        .chat-input:focus {
+            border-color: #3b82f6;
+        }
+        .send-button {
+            background-color: #3b82f6;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            margin-left: 1rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 500;
+        }
+        .send-button:hover {
+            background-color: #2563eb;
+        }
+        .card {
+            background-color: #ffffff;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+            margin-top: 1rem;
+            border: 1px solid #e2e8f0;
+            width: 100%;
+            max-width: 380px; /* Constrain card width */
+            align-self: center; /* Center cards in chat history */
+        }
+        .card-title {
+            font-weight: 600;
+            font-size: 1.125rem;
+            margin-bottom: 0.5rem;
+            color: #1a202c;
+        }
+        .card-detail {
+            font-size: 0.9rem;
+            color: #4a5568;
+            margin-bottom: 0.25rem;
+        }
+        .card-button {
+            background-color: #10b981; /* Green */
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            margin-top: 0.75rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-weight: 500;
+        }
+        .card-button:hover {
+            background-color: #059669;
+        }
+        .loading-indicator {
+            display: none;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: #6b7280;
+            align-self: center;
+        }
+        .page-header {
+            width: 100%;
+            background-color: #f0f2f5;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .page-header h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #1a202c;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-container">
+        <!-- Main Header (hidden on welcome, shown on chat pages) -->
+        <div id="mainHeader" class="page-header hidden">
+            <h2 id="headerTitle">Flatmate Chatbot</h2>
+            <button id="resetSessionButton" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-sm">Logout / Reset User</button>
+        </div>
+
+        <!-- Page 1: Welcome & Animation -->
+        <div id="welcomePage" class="page bg-gradient-to-br from-sky-500 to-blue-600 text-white">
+            <div class="welcome-animation">
+                <h1 class="text-5xl font-extrabold mb-4">👋 Flatmate</h1>
+                <p class="text-xl mb-8">Your AI-Powered Flat Broker Chatbot for Personalized Matching</p>
+                <button id="getStartedButton" class="bg-white text-blue-600 font-bold py-3 px-8 rounded-full shadow-lg hover:bg-blue-100 transition duration-300">Get Started</button>
+            </div>
+        </div>
+
+        <!-- Page 2: Auth (Create Account / Login) -->
+        <div id="authPage" class="page hidden">
+            <h2 class="text-3xl font-bold mb-6 text-slate-800">Welcome to Flatmate!</h2>
+            <p class="text-slate-600 mb-8">Sign in or create a new account to get started.</p>
+            
+            <div class="w-full max-w-sm space-y-6">
+                <div class="border p-6 rounded-lg shadow-sm bg-blue-50">
+                    <h3 class="text-xl font-bold mb-4 text-slate-800">New User? Create Account</h3>
+                    <button id="createAccountButton" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300">
+                        Create New Account (Simulated)
+                    </button>
+                </div>
+
+                <div class="border p-6 rounded-lg shadow-sm bg-gray-50">
+                    <h3 class="text-xl font-bold mb-4 text-slate-800">Existing User? Log In</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label for="loginUserId" class="block text-left text-sm font-medium text-slate-700 mb-1">User ID</label>
+                            <input type="text" id="loginUserId" class="w-full p-2 border border-slate-300 rounded-md" placeholder="Enter your User ID">
+                        </div>
+                        <div>
+                            <label for="loginPassword" class="block text-left text-sm font-medium text-slate-700 mb-1">Password (Mock: password123)</label>
+                            <input type="password" id="loginPassword" class="w-full p-2 border border-slate-300 rounded-md" placeholder="Enter your password">
+                        </div>
+                        <button id="loginButton" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow transition duration-300">Log In</button>
+                        <p id="loginStatus" class="text-sm text-red-500 mt-2"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="aadhaarPanPage" class="page hidden">
+            <h2 class="text-3xl font-bold mb-6 text-slate-800">Aadhaar/PAN Verification</h2>
+            <p id="aadhaarWelcomeMessage" class="text-slate-600 mb-4">Hello, <span class="font-bold" id="aadhaarUserDisplayName"></span>! Please provide your Aadhaar/PAN details for final verification. A one-time password (OTP) will be sent to your registered mobile number.</p>
+            <div class="w-full max-w-sm space-y-4">
+                <div>
+                    <label for="aadhaarPanPhoto" class="block text-left text-sm font-medium text-slate-700 mb-1">Upload Aadhaar/PAN Photo (Mock)</label>
+                    <input type="file" id="aadhaarPanPhoto" class="w-full p-2 border border-slate-300 rounded-md">
+                </div>
+                <div>
+                    <label for="aadhaarNumber" class="block text-left text-sm font-medium text-slate-700 mb-1">Aadhaar Number (Mock: 1234 5678 9012)</label>
+                    <input type="text" id="aadhaarNumber" class="w-full p-2 border border-slate-300 rounded-md" placeholder="XXXX XXXX XXXX">
+                </div>
+                <div>
+                    <label for="panNumber" class="block text-left text-sm font-medium text-slate-700 mb-1">PAN Number (Mock: ABCDE1234F)</label>
+                    <input type="text" id="panNumber" class="w-full p-2 border border-slate-300 rounded-md" placeholder="ABCDE1234F">
+                </div>
+                <button id="sendOtpButton" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow transition duration-300">Send OTP</button>
+                <p id="otpStatus" class="text-sm text-slate-600 mt-2"></p>
+                <div>
+                    <label for="otpInput" class="block text-left text-sm font-medium text-slate-700 mb-1">Enter OTP (Mock: 123456)</label>
+                    <input type="text" id="otpInput" class="w-full p-2 border border-slate-300 rounded-md" placeholder="Enter 6-digit OTP">
+                </div>
+                <button id="verifyContinueButton" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg shadow transition duration-300">Verify & Continue</button>
+                <p id="verificationStatus" class="text-sm text-red-500 mt-2"></p>
+            </div>
+        </div>
+
+        <!-- Page 3.5: Identity Card Display -->
+        <div id="idCardPage" class="page hidden">
+            <h2 class="text-3xl font-bold mb-6 text-slate-800">Verification Successful!</h2>
+            <p class="text-slate-600 mb-8">Here is your verified identity card. Please note down your User ID and Password for future logins.</p>
+            <div class="w-full max-w-md bg-white p-6 rounded-lg shadow-lg border border-slate-200 text-left">
+                <h3 class="text-xl font-bold text-slate-800 mb-4">Your Digital ID Card</h3>
+                <p class="card-detail"><strong>Name:</strong> <span id="idCardName"></span></p>
+                <p class="card-detail"><strong>Age:</strong> <span id="idCardAge"></span></p>
+                <p class="card-detail"><strong>Gender:</strong> <span id="idCardGender"></span></p>
+                <p class="card-detail"><strong>Email:</strong> <span id="idCardEmail"></span></p>
+                <p class="card-detail"><strong>Phone:</strong> <span id="idCardPhone"></span></p>
+                <p class="card-detail"><strong>Aadhaar:</strong> <span id="idCardAadhaar"></span></p>
+                <p class="card-detail"><strong>PAN:</strong> <span id="idCardPan"></span></p>
+                <p class="card-detail mt-4 text-blue-700"><strong>Your User ID:</strong> <span id="idCardUserId" class="font-bold"></span></p>
+                <p class="card-detail text-blue-700"><strong>Your Password:</strong> <span id="idCardPassword" class="font-bold"></span></p>
+                <button id="proceedToRoleSelectionButton" class="mt-8 w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-300">Proceed to Role Selection</button>
+            </div>
+        </div>
+
+        <!-- Page 4: Role Choice -->
+        <div id="roleChoicePage" class="page hidden">
+            <h2 class="text-3xl font-bold mb-6 text-slate-800">Who Are You?</h2>
+            <p class="text-slate-600 mb-8">Please select your role to proceed with the personalized experience.</p>
+            <div class="flex flex-col md:flex-row gap-6 w-full max-w-md">
+                <button id="chooseTenantButton" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 px-6 rounded-lg shadow-lg transition duration-300 text-xl">I am a Tenant</button>
+                <button id="chooseOwnerButton" class="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-bold py-4 px-6 rounded-lg shadow-lg transition duration-300 text-xl">I am a Co-Flatmate / Owner</button>
+            </div>
+        </div>
+
+        <!-- Page 5: Tenant Chat Page -->
+        <div id="tenantChatPage" class="hidden flex-grow flex flex-col">
+            <div class="chat-history" id="tenantChatHistory">
+                </div>
+            <div id="tenantMatchedProperties" class="px-4 py-2 bg-slate-100 border-t border-slate-200 hidden">
+                <h3 class="font-semibold text-slate-700 mb-2">Your Matched Properties:</h3>
+                <div id="tenantMatchedPropertiesList" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    </div>
+            </div>
+            <div class="chat-input-area">
+                <input type="text" id="tenantChatInput" class="chat-input" placeholder="Type your message...">
+                <button id="tenantSendButton" class="send-button">Send</button>
+            </div>
+            <div id="tenantLoadingIndicator" class="loading-indicator">Thinking...</div>
+        </div>
+
+        <!-- Page 6: Owner/Co-Flatmate Chat Page -->
+        <div id="ownerChatPage" class="hidden flex-grow flex flex-col">
+            <div class="chat-history" id="ownerChatHistory">
+                </div>
+            <div id="ownerListingsAndRequests" class="px-4 py-2 bg-slate-100 border-t border-slate-200 hidden">
+                <h3 class="font-semibold text-slate-700 mb-2">Your Listings:</h3>
+                <div id="ownerMyListings" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    </div>
+                <h3 class="font-semibold text-slate-700 mb-2">Incoming Requests:</h3>
+                <div id="ownerIncomingRequests" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    </div>
+            </div>
+            <div class="chat-input-area">
+                <input type="text" id="ownerChatInput" class="chat-input" placeholder="Type your message...">
+                <button id="ownerSendButton" class="send-button">Send</button>
+            </div>
+            <div id="ownerLoadingIndicator" class="loading-indicator">Thinking...</div>
+        </div>
+
+        <!-- Page 7: Final Chat Page (Deal Finalization) -->
+        <div id="finalChatPage" class="page hidden">
+            <h2 class="text-3xl font-bold mb-6 text-slate-800">Deal Finalization Chat</h2>
+            <p class="text-slate-600 mb-8">You are now connected with <span id="finalChatPartnerName" class="font-bold"></span>! Use this chat to finalize details and arrange a visit.</p>
+            <div class="w-full max-w-md bg-slate-100 p-4 rounded-lg shadow-inner flex flex-col gap-3">
+                <div class="bg-white p-3 rounded-lg self-start">Tenant: Hi <span id="finalChatPartnerName2" class="font-bold"></span>, when can I visit the flat?</div>
+                <div class="bg-blue-100 p-3 rounded-lg self-end">Owner: Let's discuss a time, <span id="finalChatUserName" class="font-bold"></span>! My number is <span id="finalChatPartnerContact" class="font-bold"></span>.</div>
+            </div>
+            <p class="text-slate-500 text-sm mt-4">This chat simulates the final negotiation. In a real app, this would be a live messaging feature.</p>
+        </div>
+
+    </div>
+
+    <!-- Message Box for alerts/confirmations -->
+    <div id="messageBoxOverlay" class="message-box-overlay"></div>
+    <div id="messageBox" class="message-box">
+        <p id="messageBoxText"></p>
+        <button id="messageBoxCloseButton">OK</button>
+    </div>
+
+    <script>
+        // --- Global State Variables ---
+        let currentPage = 'welcomePage';
+        let currentUser = {}; // Stores details of the currently logged-in user
+        
+        // allUsers and allProperties will persist across "Logout" (soft resets)
+        // Initialize allUsers as an empty array if it's the very first load in the browser
+        let allUsers = window.allUsers || []; 
+        window.allUsers = allUsers; // Make it truly global and persistent across script reloads (if any)
+        
+        // Initial mock properties (loaded once when script starts)
+        const initialMockProperties = [
+            {
+                id: 'prop_001', ownerId: 'owner_mock1', ownerName: 'Mrs. Sharma',
+                location: 'Sector 18, Noida', budget: 15000, peopleAccommodate: 2, flatSize: '2BHK',
+                ownerPreferences: ['non-smoker', 'vegetarian', 'clean', 'female'],
+                photos: ['https://placehold.co/400x200/cccccc/333333?text=Noida+Flat+1'],
+                contact: '9810012345', description: 'Spacious 2BHK with good ventilation.'
+            },
+            {
+                id: 'prop_002', ownerId: 'owner_mock2', ownerName: 'Mr. Khan',
+                location: 'Pitampura, Delhi', budget: 12000, peopleAccommodate: 1, flatSize: '1RK',
+                ownerPreferences: ['male', 'non-drinker', 'quiet', 'student'],
+                photos: ['https://placehold.co/400x200/cccccc/333333?text=Pitampura+Flat+1'],
+                contact: '9988765432', description: 'Cozy 1RK near metro station.'
+            },
+            {
+                id: 'prop_003', ownerId: 'owner_mock3', ownerName: 'Ms. Gupta',
+                location: 'Dwarka, Delhi', budget: 18000, peopleAccommodate: 3, flatSize: '3BHK',
+                ownerPreferences: ['family-friendly', 'clean', 'respects privacy'],
+                photos: ['https://placehold.co/400x200/cccccc/333333?text=Dwarka+Flat+1'],
+                contact: '9711223344', description: 'Large 3BHK, ideal for families.'
+            }
+        ];
+        // Add mock owner users for initialMockProperties so they can be looked up
+        const initialMockUsers = [
+            { id: 'owner_mock1', name: 'Mrs. Sharma', phone: '9810012345', role: 'owner', isVerified: true, password: 'password123', preferences: {} },
+            { id: 'owner_mock2', name: 'Mr. Khan', phone: '9988765432', role: 'owner', isVerified: true, password: 'password123', preferences: {} },
+            { id: 'owner_mock3', name: 'Ms. Gupta', phone: '9711223344', role: 'owner', isVerified: true, password: 'password123', preferences: {} }
+        ];
+        // Ensure initial mock users are added only once
+        if (allUsers.length === 0) { // Only add if allUsers is empty on first load
+            allUsers.push(...initialMockUsers);
+        }
+
+        let allProperties = window.allProperties || [...initialMockProperties]; 
+        window.allProperties = allProperties; // Make it truly global and persistent
+        
+        let allRequests = window.allRequests || []; // Make allRequests persistent as well
+        window.allRequests = allRequests; // Make it truly global and persistent
+
+
+        // --- Chatbot State Definitions (Global - moved to top for guaranteed access) ---
+        const CHAT_STATE = {
+            INITIAL: 'initial',
+            // Auth/Verification States (Page Transitions)
+            AUTH_PAGE: 'auth_page', // General auth page
+            AADHAAR_PAN_PAGE: 'aadhaar_pan_page',
+            ID_CARD_PAGE: 'id_card_page', // New state for ID card display
+            ROLE_CHOICE_PAGE: 'role_choice_page',
+
+            // Tenant Chat Flow States
+            TENANT_GREET: 'tenant_greet',
+            TENANT_ASK_BUDGET: 'tenant_ask_budget',
+            TENANT_ASK_LOCATION: 'tenant_ask_location',
+            TENANT_ASK_PEOPLE: 'tenant_ask_people',
+            TENANT_ASK_FLAT_SIZE: 'tenant_ask_flat_size',
+            TENANT_ASK_ROOMMATE_PREFS: 'tenant_ask_roommate_prefs',
+            TENANT_READY_TO_SEARCH: 'tenant_ready_to_search',
+            TENANT_DISPLAY_RESULTS: 'tenant_display_results', // For when results are shown
+            TENANT_AWAITING_APPROVAL: 'tenant_awaiting_approval',
+            TENANT_CONVERSATION: 'tenant_conversation', // General chat state for tenant
+
+            // Owner Chat Flow States
+            OWNER_GREET: 'owner_greet',
+            OWNER_ASK_PROPERTY_LOCATION: 'owner_ask_property_location',
+            OWNER_ASK_PROPERTY_PHOTOS: 'owner_ask_property_photos',
+            OWNER_ASK_PROPERTY_BUDGET: 'owner_ask_property_budget',
+            OWNER_ASK_PEOPLE_ACCOMMODATE: 'owner_ask_people_accommodate',
+            OWNER_ASK_FLAT_SIZE: 'owner_ask_flat_size',
+            OWNER_ASK_PROPERTY_DESCRIPTION: 'owner_ask_property_description',
+            OWNER_ASK_FLATMATE_PREFS: 'owner_ask_flatmate_prefs',
+            OWNER_PROPERTY_LISTED: 'owner_property_listed',
+            OWNER_REVIEW_REQUESTS: 'owner_review_requests',
+            OWNER_CONVERSATION: 'owner_conversation', // General chat state for owner
+        };
+
+        let tenantChatState = CHAT_STATE.TENANT_GREET; // Initial state for tenant chatbot flow
+        let ownerChatState = CHAT_STATE.OWNER_GREET; // Initial state for owner chatbot flow
+        let currentPropertyBeingListed = {}; // Temp storage for owner's property details
+
+        // --- Page Element References (Global, populated in DOMContentLoaded) ---
+        // Declare these outside DOMContentLoaded
+        const pages = ['welcomePage', 'authPage', 'aadhaarPanPage', 'idCardPage', 'roleChoicePage', 'tenantChatPage', 'ownerChatPage', 'finalChatPage'];
+        const pageElements = {}; // This will be populated in DOMContentLoaded
+
+
+        const MOCK_OTP = "123456"; // Fixed OTP for simulation
+        const MOCK_PASSWORD = "password123"; // Fixed password for simulated users
+
+        // --- Utility Functions (Global) ---
+        function generateUniqueId() {
+            return '_' + Math.random().toString(36).substr(2, 9);
+        }
+
+        function getRandomElement(arr) {
+            return arr[Math.floor(Math.random() * arr.length)];
+        }
+
+        function generateRandomIndianUser() {
+            const firstNamesMale = ["Aryan", "Rahul", "Amit", "Siddharth", "Vijay", "Rohit", "Karan"];
+            const firstNamesFemale = ["Priya", "Neha", "Ananya", "Deepika", "Shweta", "Pooja", "Sakshi"];
+            const lastNames = ["Sharma", "Singh", "Kumar", "Verma", "Gupta", "Khan", "Das", "Reddy"];
+            const genders = ["Male", "Female"];
+
+            const gender = getRandomElement(genders);
+            const firstName = gender === "Male" ? getRandomElement(firstNamesMale) : getRandomElement(firstNamesFemale);
+            const lastName = getRandomElement(lastNames);
+            const name = `${firstName} ${lastName}`;
+
+            const year = 1995 + Math.floor(Math.random() * 10); // Age 20-30
+            const month = Math.floor(Math.random() * 12) + 1;
+            const day = Math.floor(Math.random() * 28) + 1;
+            const dob = `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year}`;
+            const age = new Date().getFullYear() - year;
+
+            const phone = `9${Math.floor(Math.random() * 9000000000) + 1000000000}`; // 10-digit Indian number
+            const email = `${firstName.toLowerCase()}.${lastName.toLowerCase().charAt(0)}${Math.floor(Math.random() * 100)}@example.com`;
+
+            // User ID as first name + two random digits
+            const userId = `${firstName.toLowerCase()}${Math.floor(Math.random() * 90) + 10}`;
+
+            return {
+                id: userId, // Use generated userId
+                name, dob, phone, email, age, gender,
+                password: MOCK_PASSWORD, // Assign a mock password
+                preferences: {} // Initialize preferences object
+            };
+        }
+
+        // --- UI Helper Functions (Global) ---
+        function showMessageBox(message, title = "Notification") {
+            // Check if messageBox elements exist before using them
+            if(messageBoxText && messageBoxOverlay && messageBox) {
+                messageBoxText.innerHTML = `<strong>${title}</strong><br><br>${message}`;
+                messageBoxOverlay.style.display = 'block';
+                messageBox.style.display = 'flex';
+            } else {
+                console.error("MessageBox elements not found! Cannot display message: ", message);
+                alert(`${title}\n\n${message}`); // Fallback to alert
+            }
+        }
+
+        function hideMessageBox() {
+            if(messageBoxOverlay && messageBox) {
+                messageBoxOverlay.style.display = 'none';
+                messageBox.style.display = 'none';
+            }
+        }
+
+        function showLoading(indicatorElement) {
+            if (indicatorElement) indicatorElement.style.display = 'block';
+            
+            // Ensure chat input and send buttons are available before disabling
+            const tenantSendButtonEl = document.getElementById('tenantSendButton'); 
+            const ownerSendButtonEl = document.getElementById('ownerSendButton');
+            const tenantChatInputEl = document.getElementById('tenantChatInput');
+            const ownerChatInputEl = document.getElementById('ownerChatInput');
+
+            const sendButton = indicatorElement && indicatorElement.id === 'tenantLoadingIndicator' ? tenantSendButtonEl : ownerSendButtonEl;
+            const chatInput = indicatorElement && indicatorElement.id === 'tenantLoadingIndicator' ? tenantChatInputEl : ownerChatInputEl;
+            
+            if(sendButton) sendButton.disabled = true;
+            if(chatInput) chatInput.disabled = true;
+        }
+
+        function hideLoading(indicatorElement) {
+            if (indicatorElement) indicatorElement.style.display = 'none';
+
+            const tenantSendButtonEl = document.getElementById('tenantSendButton'); 
+            const ownerSendButtonEl = document.getElementById('ownerSendButton');
+            const tenantChatInputEl = document.getElementById('tenantChatInput');
+            const ownerChatInputEl = document.getElementById('ownerChatInput');
+            
+            const sendButton = indicatorElement && indicatorElement.id === 'tenantLoadingIndicator' ? tenantSendButtonEl : ownerSendButtonEl;
+            const chatInput = indicatorElement && indicatorElement.id === 'tenantLoadingIndicator' ? tenantChatInputEl : ownerChatInputEl;
+            
+            if(sendButton) sendButton.disabled = false;
+            if(chatInput) chatInput.disabled = false;
+            if(chatInput) chatInput.focus();
+        }
+
+        function showPage(pageId) {
+            // Ensure pageElements is populated before use
+            if (Object.keys(pageElements).length === 0) {
+                console.error("showPage: pageElements is empty. DOM elements not found. This indicates an issue with DOMContentLoaded assignment.");
+                return; // Prevent further errors
+            }
+
+            pages.forEach(id => {
+                if (pageElements[id]) {
+                    pageElements[id].classList.add('hidden');
+                }
+            });
+            if (pageElements[pageId]) {
+                pageElements[pageId].classList.remove('hidden');
+            } else {
+                console.error(`showPage: Page with ID '${pageId}' not found in pageElements.`);
+            }
+            currentPage = pageId;
+
+            if (mainHeader && headerTitle) { // Ensure mainHeader elements are available
+                if (['tenantChatPage', 'ownerChatPage', 'finalChatPage'].includes(pageId)) {
+                    mainHeader.classList.remove('hidden');
+                    if (pageId === 'tenantChatPage') headerTitle.textContent = 'Tenant Chat';
+                    else if (pageId === 'ownerChatPage') headerTitle.textContent = 'Owner Chat';
+                    else if (pageId === 'finalChatPage') headerTitle.textContent = 'Deal Finalization';
+                } else {
+                    mainHeader.classList.add('hidden');
+                }
+            }
+        }
+
+        function addMessageToChat(chatHistoryElement, sender, message, type = 'text') {
+            if (!chatHistoryElement) {
+                console.error("addMessageToChat: chatHistoryElement is null. Cannot add message.");
+                return;
+            }
+            const messageDiv = document.createElement('div');
+            if (type === 'card') {
+                messageDiv.innerHTML = message;
+                messageDiv.classList.add('card'); // Apply card styling
+            } else {
+                messageDiv.classList.add('message');
+                if (sender === 'user') {
+                    messageDiv.classList.add('user-message');
+                } else {
+                    messageDiv.classList.add('bot-message');
+                }
+                messageDiv.textContent = message;
+            }
+            chatHistoryElement.appendChild(messageDiv);
+            chatHistoryElement.scrollTop = chatHistoryElement.scrollHeight;
+        }
+
+        function displayPropertyCard(property, containerElement, isTenantView = true) {
+            if (!containerElement) {
+                console.error("displayPropertyCard: containerElement is null. Cannot display card.");
+                return;
+            }
+            const cardHtml = `
+                <div class="card p-4">
+                    <div class="card-title">${property.location} - Rent: ₹${property.budget.toLocaleString('en-IN')}</div>
+                    <p class="card-detail">Description: ${property.description || 'No description provided.'}</p>
+                    <p class="card-detail">Accommodates: ${property.peopleAccommodate} person(s)</p>
+                    <p class="card-detail">Flat Size: ${property.flatSize || 'Not specified'}</p>
+                    <p class="card-detail">Owner Preferences: ${property.ownerPreferences && property.ownerPreferences.length > 0 ? property.ownerPreferences.join(', ') : 'None specified'}</p>
+                    ${property.photos && property.photos.length > 0 ?
+                        `<img src="${property.photos[0]}" alt="Property Image" class="w-full h-40 object-cover rounded-md mt-2 mb-2" onerror="this.onerror=null;this.src='https://placehold.co/400x200/cccccc/333333?text=No+Image';">` :
+                        `<img src="https://placehold.co/400x200/cccccc/333333?text=No+Image" alt="Placeholder Image" class="w-full h-40 object-cover rounded-md mt-2 mb-2">`
+                    }
+                    ${isTenantView ? `<button class="card-button" data-property-id="${property.id}" onclick="sendInterest('${property.id}')">Express Interest</button>` : ''}
+                </div>
+            `;
+            const wrapperDiv = document.createElement('div');
+            wrapperDiv.innerHTML = cardHtml;
+            containerElement.appendChild(wrapperDiv.firstElementChild); // Append the card div directly
+        }
+
+        function displayRequestCard(request, tenantProfile, containerElement) {
+            if (!containerElement) {
+                console.error("displayRequestCard: containerElement is null. Cannot display card.");
+                return;
+            }
+            const cardHtml = `
+                <div class="card p-4">
+                    <div class="card-title">New Interest from ${tenantProfile.name}</div>
+                    <p class="card-detail">Tenant Preferences: ${tenantProfile.preferences && tenantProfile.preferences.roommate_prefs && tenantProfile.preferences.roommate_prefs.length > 0 ? tenantProfile.preferences.roommate_prefs.join(', ') : 'None specified'}</p>
+                    <p class="card-detail">Budget: ₹${tenantProfile.preferences.budget || 'Not specified'}</p>
+                    <p class="card-detail">Location: ${tenantProfile.preferences.location || 'Not specified'}</p>
+                    <p class="card-detail">Status: ${request.status}</p>
+                    ${request.status === 'pending' ? `
+                        <button class="card-button bg-green-500 hover:bg-green-600 mr-2" data-request-id="${request.id}" onclick="ownerApproveRequest('${request.id}')">Approve</button>
+                        <button class="card-button bg-red-500 hover:bg-red-600" data-request-id="${request.id}" onclick="ownerRejectRequest('${request.id}')">Reject</button>
+                    ` : ''}
+                </div>
+            `;
+            const wrapperDiv = document.createElement('div');
+            wrapperDiv.innerHTML = cardHtml;
+            containerElement.appendChild(wrapperDiv.firstElementChild);
+        }
+
+        // --- Core Logic Functions (Global) ---
+        function resetSession() {
+            currentUser = {}; 
+            // allRequests are NOT cleared here anymore to make them persistent
+            // allUsers and allProperties are already persistent
+
+            if(pageElements.tenantChatHistory) pageElements.tenantChatHistory.innerHTML = '';
+            if(pageElements.tenantMatchedProperties) pageElements.tenantMatchedProperties.classList.add('hidden');
+            if(pageElements.tenantMatchedPropertiesList) pageElements.tenantMatchedPropertiesList.innerHTML = '';
+
+            if(pageElements.ownerChatHistory) pageElements.ownerChatHistory.innerHTML = '';
+            if(pageElements.ownerListingsAndRequests) pageElements.ownerListingsAndRequests.classList.add('hidden');
+            if(pageElements.ownerMyListings) pageElements.ownerMyListings.innerHTML = '';
+            if(pageElements.ownerIncomingRequests) pageElements.ownerIncomingRequests.innerHTML = '';
+
+            hideMessageBox();
+            showPage('authPage'); 
+            console.log("Session reset. Current User cleared. All properties and users retained for marketplace simulation.");
+            console.log("Current state after reset:", { allUsers, allProperties, allRequests });
+        }
+
+        // --- Matching Algorithm (Simplified for Prototype - Global) ---
+        function normalizePreferenceString(prefString) {
+            return prefString.toLowerCase().replace(/[\s-]/g, ''); // Remove spaces and hyphens
+        }
+
+        function calculateCompatibility(tenantPrefs, property) {
+            console.log("--- Calculating compatibility ---");
+            console.log("Tenant Prefs:", tenantPrefs);
+            console.log("Property:", property);
+            if (!tenantPrefs || !property || !property.ownerPreferences) {
+                console.log("Invalid input for compatibility calculation.");
+                return 0;
+            }
+
+            let totalWeightedScore = 0;
+            let totalWeight = 0;
+
+            const weights = {
+                location: 5, // High importance
+                budget: 4,
+                peopleAccommodate: 3,
+                flatSize: 3,
+                roommatePreferences: 5 // High importance for qualitative prefs
+            };
+
+            // Location Match
+            let locationScore = 0;
+            if (tenantPrefs.location && property.location) {
+                const tenantLocLower = normalizePreferenceString(tenantPrefs.location);
+                const propLocLower = normalizePreferenceString(property.location);
+                
+                if (propLocLower.includes(tenantLocLower) || tenantLocLower.includes(propLocLower)) {
+                    locationScore = 1; // Direct or strong partial match (e.g., "Noida" in "Sector18Noida")
+                } else {
+                    // Attempt to match by common Indian cities/regions if specific area doesn't match
+                    const tenantCityKeywords = tenantLocLower.match(/(delhi|noida|gurgaon|mumbai|bengaluru|pune|chennai|kolkata|hyderabad|ahmedabad)/g) || [];
+                    const propCityKeywords = propLocLower.match(/(delhi|noida|gurgaon|mumbai|bengaluru|pune|chennai|kolkata|hyderabad|ahmedabad)/g) || [];
+
+                    const commonCities = tenantCityKeywords.filter(city => propCityKeywords.includes(city));
+                    if (commonCities.length > 0) {
+                        locationScore = 0.7; // Same city, different area
+                    } else {
+                        locationScore = 0.2; // No strong match
+                    }
+                }
+                totalWeightedScore += weights.location * locationScore;
+                totalWeight += weights.location;
+                console.log(`  - Location Match Score: ${locationScore.toFixed(2)} (Weighted: ${(weights.location * locationScore).toFixed(2)})`);
+            }
+
+            // Budget Match
+            let budgetScore = 0;
+            if (tenantPrefs.budget && property.budget) {
+                const tenantBudgetRaw = tenantPrefs.budget.replace(/[₹,]/g, '');
+                let tenantBudgetMin, tenantBudgetMax;
+
+                if (tenantBudgetRaw.includes('-')) {
+                    [tenantBudgetMin, tenantBudgetMax] = tenantBudgetRaw.split('-').map(Number);
+                } else {
+                    tenantBudgetMin = Number(tenantBudgetRaw);
+                    tenantBudgetMax = Number(tenantBudgetRaw);
+                }
+                
+                const propBudget = property.budget;
+
+                if (!isNaN(tenantBudgetMin) && !isNaN(tenantBudgetMax) && tenantBudgetMin > 0) { // Ensure parsed budget is valid
+                    if (propBudget >= tenantBudgetMin && propBudget <= tenantBudgetMax) {
+                        budgetScore = 1; // Perfect match within range
+                    } else if (propBudget > tenantBudgetMax && propBudget <= tenantBudgetMax * 1.10) { // Up to 10% above max
+                        budgetScore = 0.8;
+                    } else if (propBudget < tenantBudgetMin && propBudget >= tenantBudgetMin * 0.90) { // Down to 10% below min
+                        budgetScore = 0.8;
+                    } else {
+                        budgetScore = 0.3; // Some overlap or close proximity
+                    }
+                }
+                totalWeightedScore += weights.budget * budgetScore;
+                totalWeight += weights.budget;
+                console.log(`  - Budget Match Score: ${budgetScore.toFixed(2)} (Weighted: ${(weights.budget * budgetScore).toFixed(2)})`);
+            }
+
+            // People Accommodate Match
+            let peopleScore = 0;
+            if (tenantPrefs.people && property.peopleAccommodate) {
+                if (tenantPrefs.people === property.peopleAccommodate) {
+                    peopleScore = 1;
+                } else if (Math.abs(tenantPrefs.people - property.peopleAccommodate) === 1) { // Difference of 1 person
+                    peopleScore = 0.7;
+                } else {
+                    peopleScore = 0.3;
+                }
+                totalWeightedScore += weights.peopleAccommodate * peopleScore;
+                totalWeight += weights.peopleAccommodate;
+                console.log(`  - People Accommodate Score: ${peopleScore.toFixed(2)} (Weighted: ${(weights.peopleAccommodate * peopleScore).toFixed(2)})`);
+            }
+
+            // Flat Size Match
+            let flatSizeScore = 0;
+            if (tenantPrefs.flatSize && property.flatSize) {
+                const tenantSizeNormalized = normalizePreferenceString(tenantPrefs.flatSize);
+                const propSizeNormalized = normalizePreferenceString(property.flatSize);
+                if (tenantSizeNormalized === propSizeNormalized) {
+                    flatSizeScore = 1;
+                } else {
+                    const sizesOrder = { '1rk': 1, '1bhk': 2, '2bhk': 3, '3bhk': 4, '4bhk': 5 }; // Ordinal mapping
+                    const tenantSizeVal = sizesOrder[tenantSizeNormalized];
+                    const propSizeVal = sizesOrder[propSizeNormalized];
+
+                    if (tenantSizeVal && propSizeVal) {
+                        if (propSizeVal >= tenantSizeVal) { // Property is same or larger
+                            flatSizeScore = 0.8;
+                        } else if (propSizeVal === tenantSizeVal - 1) { // One size smaller
+                            flatSizeScore = 0.6;
+                        } else {
+                            flatSizeScore = 0.3;
+                        }
+                    } else {
+                        flatSizeScore = 0.5; // Valid but non-matching size
+                    }
+                }
+                totalWeightedScore += weights.flatSize * flatSizeScore;
+                totalWeight += weights.flatSize;
+                console.log(`  - Flat Size Score: ${flatSizeScore.toFixed(2)} (Weighted: ${(weights.flatSize * flatSizeScore).toFixed(2)})`);
+            }
+
+            // Roommate Preferences Match (Qualitative - using normalized keyword overlap)
+            let roommatePrefScore = 0;
+            if (tenantPrefs.roommate_prefs && property.ownerPreferences) {
+                const tenantPrefSet = new Set(tenantPrefs.roommate_prefs.map(p => normalizePreferenceString(p)));
+                const ownerPrefSet = new Set(property.ownerPreferences.map(p => normalizePreferenceString(p)));
+                let commonPrefsCount = 0;
+                tenantPrefSet.forEach(pref => {
+                    if (ownerPrefSet.has(pref)) {
+                        commonPrefsCount++;
+                    }
+                });
+                roommatePrefScore = (commonPrefsCount / Math.max(tenantPrefSet.size, 1)); // Proportion of tenant's preferences met
+                totalWeightedScore += weights.roommatePreferences * roommatePrefScore;
+                totalWeight += weights.roommatePreferences;
+                console.log(`  - Roommate Pref Score: ${roommatePrefScore.toFixed(2)} (Weighted: ${(weights.roommatePreferences * roommatePrefScore).toFixed(2)})`);
+            }
+
+            const finalScore = (totalWeight === 0) ? 0 : (totalWeightedScore / totalWeight) * 100;
+            console.log(`Final Compatibility Score for ${property.location} (ID: ${property.id}): ${finalScore.toFixed(2)}%`);
+            console.log("--------------------------------------------------");
+            return finalScore;
+        }
+
+        function performMatching() {
+            const currentTenantMatchedPropertiesList = document.getElementById('tenantMatchedPropertiesList');
+            const currentTenantChatHistory = document.getElementById('tenantChatHistory');
+            const currentTenantMatchedProperties = document.getElementById('tenantMatchedProperties');
+
+            if(currentTenantMatchedPropertiesList) currentTenantMatchedPropertiesList.innerHTML = '';
+            console.log("Performing matching. Current user prefs:", currentUser.preferences);
+            console.log("All available properties:", allProperties);
+
+            const matched = allProperties.filter(prop => {
+                const score = calculateCompatibility(currentUser.preferences, prop);
+                return score >= 60; // 60% threshold
+            });
+
+            if (matched.length > 0) {
+                addMessageToChat(currentTenantChatHistory, 'bot', `Great news, ${currentUser.name}! I found ${matched.length} properties that match your preferences:`);
+                if(currentTenantMatchedProperties) currentTenantMatchedProperties.classList.remove('hidden');
+                matched.forEach(prop => displayPropertyCard(prop, currentTenantMatchedPropertiesList, true));
+            } else {
+                addMessageToChat(currentTenantChatHistory, 'bot', "I couldn't find any properties that meet your exact preferences at the moment. Try broadening your criteria or check back later!");
+                if(currentTenantMatchedProperties) currentTenantMatchedProperties.classList.add('hidden');
+            }
+            if(currentTenantChatHistory) currentTenantChatHistory.scrollTop = currentTenantChatHistory.scrollHeight;
+        }
+
+        // --- Request/Approval System (Global) ---
+        function sendInterest(propertyId) {
+            console.log("Attempting to send interest for property ID:", propertyId);
+            const property = allProperties.find(p => p.id === propertyId);
+            if (!property) {
+                showMessageBox("Error: Property not found.");
+                console.error("Property not found for ID:", propertyId);
+                return;
+            }
+
+            const existingRequest = allRequests.find(req => req.tenantId === currentUser.id && req.propertyId === propertyId);
+            if (existingRequest) {
+                showMessageBox("You have already sent an interest request for this property.");
+                console.log("Interest already sent for this property.");
+                return;
+            }
+
+            const requestId = generateUniqueId();
+            const newRequest = {
+                id: requestId,
+                tenantId: currentUser.id,
+                propertyId: propertyId,
+                ownerId: property.ownerId, // This is crucial for owner to filter requests
+                status: 'pending',
+                timestamp: new Date().toISOString()
+            };
+            allRequests.push(newRequest);
+            addMessageToChat(document.getElementById('tenantChatHistory'), 'bot', `Your interest has been sent to the owner of the property in ${property.location}! Request ID: ${requestId}`);
+            showMessageBox(`Interest sent for property in ${property.location}! Owner will be notified.`);
+            console.log("New request added:", newRequest);
+            console.log("All requests:", allRequests);
+
+            const ownerUser = allUsers.find(u => u.id === property.ownerId);
+            if (ownerUser && ownerUser.role === 'owner') { 
+                 console.log(`Simulating notification to owner ${ownerUser.name} about new request: ${requestId}`);
+            }
+        }
+
+        // Expose to global scope for onclick attributes
+        window.sendInterest = sendInterest;
+
+        function ownerApproveRequest(requestId) {
+            console.log("Owner attempting to approve request ID:", requestId);
+            const request = allRequests.find(req => req.id === requestId);
+            if (!request) {
+                showMessageBox("Error: Request not found.");
+                console.error("Request not found for ID:", requestId);
+                return;
+            }
+            request.status = 'approved';
+            showMessageBox(`Request from ${allUsers.find(u => u.id === request.tenantId).name} approved! Tenant will be notified.`);
+            console.log("Request approved:", request);
+            
+            const tenant = allUsers.find(u => u.id === request.tenantId);
+            const owner = currentUser;
+            const property = allProperties.find(p => p.id === request.propertyId);
+
+            if(document.getElementById('ownerIncomingRequests')) document.getElementById('ownerIncomingRequests').innerHTML = '';
+            displayOwnerRequests(); // Refresh owner's requests display
+
+            if (tenant && owner && property) {
+                console.log(`Simulating final chat for tenant ${tenant.name} and owner ${owner.name}`);
+                // Update the tenant's request status in allRequests to approved
+                const tenantRequestInAllRequests = allRequests.find(req => req.tenantId === tenant.id && req.propertyId === property.id);
+                if (tenantRequestInAllRequests) {
+                    tenantRequestInAllRequests.status = 'approved';
+                    tenantRequestInAllRequests.ownerContact = owner.contact; // Store owner's contact for tenant
+                    console.log("Tenant's request status updated to approved with owner contact.");
+                }
+
+                // If the current user is the owner, transition them to a demo of the final chat.
+                // In a real app, this would trigger a notification to the tenant's actual session.
+                setTimeout(() => {
+                    showPage('finalChatPage');
+                    if(document.getElementById('finalChatPartnerName')) document.getElementById('finalChatPartnerName').textContent = owner.name;
+                    if(document.getElementById('finalChatPartnerName2')) document.getElementById('finalChatPartnerName2').textContent = owner.name;
+                    if(document.getElementById('finalChatUserName')) document.getElementById('finalChatUserName').textContent = tenant.name;
+                    if(document.getElementById('finalChatPartnerContact')) document.getElementById('finalChatPartnerContact').textContent = owner.contact;
+                }, 1000);
+            } else {
+                console.error("Missing tenant, owner, or property data for final chat simulation.");
+            }
+        }
+        window.ownerApproveRequest = ownerApproveRequest;
+
+        function ownerRejectRequest(requestId) {
+            console.log("Owner attempting to reject request ID:", requestId);
+            const request = allRequests.find(req => req.id === requestId);
+            if (!request) {
+                showMessageBox("Error: Request not found.");
+                console.error("Request not found for ID:", requestId);
+                return;
+            }
+            request.status = 'rejected';
+            // Also store a rejection message for the tenant
+            request.rejectionMessage = `Your request for the property in ${allProperties.find(p => p.id === request.propertyId).location} has been rejected by ${allUsers.find(u => u.id === request.ownerId).name}.`;
+            
+            showMessageBox(`Request from ${allUsers.find(u => u.id === request.tenantId).name} rejected.`);
+            console.log("Request rejected:", request);
+            if(document.getElementById('ownerIncomingRequests')) document.getElementById('ownerIncomingRequests').innerHTML = '';
+            displayOwnerRequests(); // Refresh owner's requests display
+        }
+        window.ownerRejectRequest = ownerRejectRequest;
+
+        function displayOwnerListings() {
+            const currentOwnerMyListings = document.getElementById('ownerMyListings');
+            const currentOwnerListingsAndRequests = document.getElementById('ownerListingsAndRequests');
+
+            if(currentOwnerMyListings) currentOwnerMyListings.innerHTML = '';
+            const ownersProperties = allProperties.filter(p => p.ownerId === currentUser.id);
+            console.log("Displaying owner listings:", ownersProperties);
+            if (ownersProperties.length > 0) {
+                ownersProperties.forEach(prop => displayPropertyCard(prop, currentOwnerMyListings, false));
+            } else {
+                if(currentOwnerMyListings) currentOwnerMyListings.innerHTML = '<p class="text-slate-500">No properties listed yet.</p>';
+            }
+            if(currentOwnerListingsAndRequests) currentOwnerListingsAndRequests.classList.remove('hidden');
+        }
+
+        function displayOwnerRequests() {
+            const currentOwnerIncomingRequests = document.getElementById('ownerIncomingRequests');
+            const currentOwnerListingsAndRequests = document.getElementById('ownerListingsAndRequests');
+
+            if(currentOwnerIncomingRequests) currentOwnerIncomingRequests.innerHTML = '';
+            const requestsForMyProperties = allRequests.filter(req => req.ownerId === currentUser.id);
+            console.log("Checking requests for current owner:", currentUser.id, "Requests found:", requestsForMyProperties);
+            if (requestsForMyProperties.length > 0) {
+                requestsForMyProperties.forEach(req => {
+                    const tenantProfile = allUsers.find(u => u.id === req.tenantId);
+                    if (tenantProfile) {
+                        displayRequestCard(req, tenantProfile, currentOwnerIncomingRequests);
+                    } else {
+                        console.warn("Tenant profile not found in allUsers for request:", req.tenantId);
+                        displayRequestCard(req, { name: "Unknown Tenant", preferences: {} }, currentOwnerIncomingRequests);
+                    }
+                });
+            } else {
+                if(currentOwnerIncomingRequests) currentOwnerIncomingRequests.innerHTML = '<p class="text-slate-500">No incoming requests at the moment.</p>';
+            }
+            if(currentOwnerListingsAndRequests) currentOwnerListingsAndRequests.classList.remove('hidden');
+        }
+
+        // --- Chatbot Conversation Flow Handlers (Global) ---
+
+        async function handleTenantChatInput(userInput) {
+            const tenantChatHistory = document.getElementById('tenantChatHistory');
+            const tenantChatInput = document.getElementById('tenantChatInput');
+            const tenantLoadingIndicator = document.getElementById('tenantLoadingIndicator');
+
+            if(tenantChatHistory) addMessageToChat(tenantChatHistory, 'user', userInput);
+            if(tenantChatInput) tenantChatInput.value = '';
+            if(tenantLoadingIndicator) showLoading(tenantLoadingIndicator);
+
+            await new Promise(resolve => setTimeout(resolve, 800));
+
+            let botResponse = '';
+            console.log("Tenant chat state:", tenantChatState, "User input:", userInput);
+            switch (tenantChatState) {
+                case CHAT_STATE.TENANT_GREET:
+                    // Check for any pending or rejected requests for this tenant upon greeting
+                    const rejectedRequest = allRequests.find(req => req.tenantId === currentUser.id && req.status === 'rejected' && req.rejectionMessage);
+                    if (rejectedRequest) {
+                        addMessageToChat(tenantChatHistory, 'bot', rejectedRequest.rejectionMessage);
+                        // Clear the rejection message after displaying it to prevent repeat notifications
+                        rejectedRequest.rejectionMessage = null; 
+                    }
+                    botResponse = `Hello, ${currentUser.name}! I'm your AI Flatmate Finder. Let's find your ideal shared accommodation. What's your ideal monthly budget for rent (e.g., ₹10,000-₹12,000)?`;
+                    tenantChatState = CHAT_STATE.TENANT_ASK_BUDGET;
+                    break;
+                case CHAT_STATE.TENANT_ASK_BUDGET:
+                    currentUser.preferences.budget = userInput;
+                    botResponse = `Got it. And which location are you primarily looking for? (e.g., Pitampura, Delhi; Noida Sector 62)`;
+                    tenantChatState = CHAT_STATE.TENANT_ASK_LOCATION;
+                    break;
+                case CHAT_STATE.TENANT_ASK_LOCATION:
+                    currentUser.preferences.location = userInput;
+                    botResponse = `Understood. How many people are you looking to share the flat with (including yourself)?`;
+                    tenantChatState = CHAT_STATE.TENANT_ASK_PEOPLE;
+                    break;
+                case CHAT_STATE.TENANT_ASK_PEOPLE:
+                    currentUser.preferences.people = parseInt(userInput);
+                    if (isNaN(currentUser.preferences.people) || currentUser.preferences.people <= 0) {
+                        botResponse = "Please enter a valid number for people you want to share with.";
+                        tenantChatState = CHAT_STATE.TENANT_ASK_PEOPLE;
+                    } else {
+                        botResponse = `Okay. What kind of flat size are you looking for? (e.g., 1RK, 2BHK, 3BHK)`;
+                        tenantChatState = CHAT_STATE.TENANT_ASK_FLAT_SIZE;
+                    }
+                    break;
+                case CHAT_STATE.TENANT_ASK_FLAT_SIZE:
+                    currentUser.preferences.flatSize = userInput;
+                    botResponse = `Finally, tell me about your ideal flatmates. What qualities are you looking for? (e.g., vegetarian, non-smoker, male/female, from specific university like Sharda University, respects privacy). You can list multiple preferences separated by commas.`;
+                    tenantChatState = CHAT_STATE.TENANT_ASK_ROOMMATE_PREFS;
+                    break;
+                case CHAT_STATE.TENANT_ASK_ROOMMATE_PREFS:
+                    currentUser.preferences.roommate_prefs = userInput.split(',').map(p => p.trim());
+                    botResponse = `Thanks for sharing your preferences! I'm now searching for properties that match your criteria.`;
+                    tenantChatState = CHAT_STATE.TENANT_READY_TO_SEARCH;
+                    if(tenantChatHistory) addMessageToChat(tenantChatHistory, 'bot', botResponse);
+                    if(tenantLoadingIndicator) hideLoading(tenantLoadingIndicator);
+                    performMatching();
+                    tenantChatState = CHAT_STATE.TENANT_CONVERSATION;
+                    return;
+                case CHAT_STATE.TENANT_CONVERSATION:
+                    if (userInput.toLowerCase().includes('change preferences')) {
+                        botResponse = "Okay, let's update your preferences. What's your ideal monthly budget for rent?";
+                        tenantChatState = CHAT_STATE.TENANT_ASK_BUDGET;
+                    } else if (userInput.toLowerCase().includes('search again')) {
+                        botResponse = "Searching for properties again...";
+                        performMatching();
+                    } else {
+                        botResponse = `I have already shown you the matched properties based on your preferences. If you'd like to refine your search, just tell me "Change preferences."`;
+                    }
+                    break;
+                default:
+                    botResponse = "I'm not sure how to respond to that. Please tell me if you want to search again or if you have other questions.";
+                    break;
+            }
+            if(tenantChatHistory) addMessageToChat(tenantChatHistory, 'bot', botResponse);
+            if(tenantLoadingIndicator) hideLoading(tenantLoadingIndicator);
+        }
+
+        async function handleOwnerChatInput(userInput) {
+            const ownerChatHistory = document.getElementById('ownerChatHistory');
+            const ownerChatInput = document.getElementById('ownerChatInput');
+            const ownerLoadingIndicator = document.getElementById('ownerLoadingIndicator');
+            const ownerMyListings = document.getElementById('ownerMyListings');
+            const ownerIncomingRequests = document.getElementById('ownerIncomingRequests');
+            const ownerListingsAndRequests = document.getElementById('ownerListingsAndRequests');
+
+            if(ownerChatHistory) addMessageToChat(ownerChatHistory, 'user', userInput);
+            if(ownerChatInput) ownerChatInput.value = '';
+            if(ownerLoadingIndicator) showLoading(ownerLoadingIndicator);
+
+            await new Promise(resolve => setTimeout(resolve, 800));
+
+            let botResponse = '';
+            console.log("Owner chat state:", ownerChatState, "User input:", userInput);
+            switch (ownerChatState) {
+                case CHAT_STATE.OWNER_GREET:
+                    botResponse = `Hello, ${currentUser.name}! I'm your AI Flatmate Finder. Let's list your property. What's its full address, including city and landmark? (e.g., 123, Sector 18, Noida)`;
+                    ownerChatState = CHAT_STATE.OWNER_ASK_PROPERTY_LOCATION;
+                    currentPropertyBeingListed = { id: generateUniqueId(), ownerId: currentUser.id, ownerName: currentUser.name, contact: currentUser.phone, ownerPreferences: [] }; // Initialize ownerPreferences
+                    break;
+                case CHAT_STATE.OWNER_ASK_PROPERTY_LOCATION:
+                    currentPropertyBeingListed.location = userInput;
+                    botResponse = `Got it. Please provide a mock URL for a photo of your property. (e.g., https://placehold.co/600x400/000000/FFFFFF/png?text=My+Flat)`;
+                    ownerChatState = CHAT_STATE.OWNER_ASK_PROPERTY_PHOTOS;
+                    break;
+                case CHAT_STATE.OWNER_ASK_PROPERTY_PHOTOS:
+                    currentPropertyBeingListed.photos = [userInput];
+                    botResponse = `Thanks! What's the monthly rent you're looking to share (in ₹)? (e.g., ₹15,000)`;
+                    ownerChatState = CHAT_STATE.OWNER_ASK_PROPERTY_BUDGET;
+                    break;
+                case CHAT_STATE.OWNER_ASK_PROPERTY_BUDGET:
+                    currentPropertyBeingListed.budget = parseInt(userInput.replace(/[₹,]/g, ''));
+                    if (isNaN(currentPropertyBeingListed.budget) || currentPropertyBeingListed.budget <= 0) {
+                        botResponse = "Please enter a valid budget in Rupees (e.g., ₹15,000).";
+                        ownerChatState = CHAT_STATE.OWNER_ASK_PROPERTY_BUDGET;
+                    } else {
+                        botResponse = `Understood. How many people are you looking to accommodate in your property?`;
+                        ownerChatState = CHAT_STATE.OWNER_ASK_PEOPLE_ACCOMMODATE;
+                    }
+                    break;
+                case CHAT_STATE.OWNER_ASK_PEOPLE_ACCOMMODATE:
+                    currentPropertyBeingListed.peopleAccommodate = parseInt(userInput);
+                    if (isNaN(currentPropertyBeingListed.peopleAccommodate) || currentPropertyBeingListed.peopleAccommodate <= 0) {
+                        botResponse = "Please enter a valid number for people to accommodate.";
+                        ownerChatState = CHAT_STATE.OWNER_ASK_PEOPLE_ACCOMMODATE;
+                    } else {
+                        botResponse = `What's the flat size? (e.g., 1RK, 2BHK, 3BHK)`;
+                        ownerChatState = CHAT_STATE.OWNER_ASK_FLAT_SIZE;
+                    }
+                    break;
+                case CHAT_STATE.OWNER_ASK_FLAT_SIZE:
+                    currentPropertyBeingListed.flatSize = userInput;
+                    botResponse = `Please provide a brief description of your property. (e.g., Spacious 2BHK, furnished, near metro)`;
+                    ownerChatState = CHAT_STATE.OWNER_ASK_PROPERTY_DESCRIPTION;
+                    break;
+                case CHAT_STATE.OWNER_ASK_PROPERTY_DESCRIPTION:
+                    currentPropertyBeingListed.description = userInput;
+                    botResponse = `Lastly, what qualities are you looking for in your flatmate(s)? (e.g., non-smoker, vegetarian, female, working professional, respects privacy). You can list multiple preferences separated by commas.`;
+                    ownerChatState = CHAT_STATE.OWNER_ASK_FLATMATE_PREFS;
+                    break;
+                case CHAT_STATE.OWNER_ASK_FLATMATE_PREFS:
+                    currentPropertyBeingListed.ownerPreferences = userInput.split(',').map(p => p.trim()); // Correctly assign preferences
+                    allProperties.push(currentPropertyBeingListed);
+                    console.log("New property listed:", currentPropertyBeingListed);
+                    console.log("All properties after new listing:", allProperties);
+
+                    botResponse = `Thanks! Your property in ${currentPropertyBeingListed.location} has been listed! I'll notify you of any incoming interest.`;
+                    ownerChatState = CHAT_STATE.OWNER_PROPERTY_LISTED;
+                    if(ownerChatHistory) addMessageToChat(ownerChatHistory, 'bot', botResponse);
+                    if(ownerLoadingIndicator) hideLoading(ownerLoadingIndicator);
+                    displayOwnerListings();
+                    displayOwnerRequests();
+                    ownerChatState = CHAT_STATE.OWNER_CONVERSATION;
+                    return;
+                case CHAT_STATE.OWNER_CONVERSATION:
+                    if (userInput.toLowerCase().includes('list another property')) {
+                        ownerChatState = CHAT_STATE.OWNER_GREET;
+                        botResponse = `Okay, let's list another property. What's its full address, including city and landmark?`;
+                    } else if (userInput.toLowerCase().includes('check requests')) {
+                        botResponse = "Checking for new requests...";
+                        displayOwnerRequests();
+                    } else {
+                        botResponse = `I'm here to help manage your listings and requests. You can ask me to "List another property" or "Check requests."`;
+                    }
+                    break;
+                default:
+                    botResponse = "I'm not sure how to respond to that. Please tell me if you want to list a property or check requests.";
+                    break;
+            }
+            if(ownerChatHistory) addMessageToChat(ownerChatHistory, 'bot', botResponse);
+            if(ownerLoadingIndicator) hideLoading(ownerLoadingIndicator);
+        }
+
+        // --- Event Listeners ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // DOM element assignments
+            mainHeader = document.getElementById('mainHeader');
+            headerTitle = document.getElementById('headerTitle');
+            resetSessionButton = document.getElementById('resetSessionButton');
+
+            getStartedButton = document.getElementById('getStartedButton');
+            createAccountButton = document.getElementById('createAccountButton');
+            loginButton = document.getElementById('loginButton');
+            loginUserIdInput = document.getElementById('loginUserId');
+            loginPasswordInput = document.getElementById('loginPassword');
+            loginStatus = document.getElementById('loginStatus');
+
+            googleAuthDetails = document.getElementById('googleAuthDetails');
+            authName = document.getElementById('authName');
+            aadhaarUserDisplayName = document.getElementById('aadhaarUserDisplayName');
+
+
+            aadhaarPanPhoto = document.getElementById('aadhaarPanPhoto');
+            aadhaarNumber = document.getElementById('aadhaarNumber');
+            panNumber = document.getElementById('panNumber');
+            sendOtpButton = document.getElementById('sendOtpButton');
+            otpStatus = document.getElementById('otpStatus');
+            otpInput = document.getElementById('otpInput');
+            verifyContinueButton = document.getElementById('verifyContinueButton');
+            verificationStatus = document.getElementById('verificationStatus');
+
+            // New ID Card Page elements
+            const idCardPage = document.getElementById('idCardPage');
+            const idCardName = document.getElementById('idCardName');
+            const idCardAge = document.getElementById('idCardAge');
+            const idCardGender = document.getElementById('idCardGender');
+            const idCardEmail = document.getElementById('idCardEmail');
+            const idCardPhone = document.getElementById('idCardPhone');
+            const idCardAadhaar = document.getElementById('idCardAadhaar');
+            const idCardPan = document.getElementById('idCardPan');
+            const idCardUserId = document.getElementById('idCardUserId');
+            const idCardPassword = document.getElementById('idCardPassword');
+            const proceedToRoleSelectionButton = document.getElementById('proceedToRoleSelectionButton');
+
+
+            chooseTenantButton = document.getElementById('chooseTenantButton');
+            chooseOwnerButton = document.getElementById('chooseOwnerButton');
+
+            tenantChatHistory = document.getElementById('tenantChatHistory');
+            tenantChatInput = document.getElementById('tenantChatInput');
+            tenantSendButton = document.getElementById('tenantSendButton'); 
+            tenantLoadingIndicator = document.getElementById('tenantLoadingIndicator');
+            tenantMatchedProperties = document.getElementById('tenantMatchedProperties');
+            tenantMatchedPropertiesList = document.getElementById('tenantMatchedPropertiesList');
+
+            ownerChatHistory = document.getElementById('ownerChatHistory');
+            ownerChatInput = document.getElementById('ownerChatInput');
+            ownerSendButton = document.getElementById('ownerSendButton');
+            ownerLoadingIndicator = document.getElementById('ownerLoadingIndicator');
+            ownerListingsAndRequests = document.getElementById('ownerListingsAndRequests');
+            ownerMyListings = document.getElementById('ownerMyListings');
+            ownerIncomingRequests = document.getElementById('ownerIncomingRequests');
+
+            finalChatPage = document.getElementById('finalChatPage');
+            finalChatPartnerName = document.getElementById('finalChatPartnerName');
+            finalChatPartnerName2 = document.getElementById('finalChatPartnerName2');
+            finalChatUserName = document.getElementById('finalChatUserName');
+            finalChatPartnerContact = document.getElementById('finalChatPartnerContact');
+
+            messageBox = document.getElementById('messageBox');
+            messageBoxOverlay = document.getElementById('messageBoxOverlay');
+            messageBoxText = document.getElementById('messageBoxText');
+            messageBoxCloseButton = document.getElementById('messageBoxCloseButton');
+
+            // Populate pageElements object with references
+            pages.forEach(id => {
+                pageElements[id] = document.getElementById(id);
+                console.assert(pageElements[id], `Error: Element with ID '${id}' not found!`);
+            });
+
+
+            if(messageBoxCloseButton) messageBoxCloseButton.addEventListener('click', hideMessageBox);
+            if(resetSessionButton) resetSessionButton.addEventListener('click', resetSession);
+
+            if(getStartedButton) getStartedButton.addEventListener('click', () => showPage('authPage'));
+
+            if(createAccountButton) createAccountButton.addEventListener('click', () => {
+                currentUser = generateRandomIndianUser();
+                if (!allUsers.find(u => u.id === currentUser.id)) { // Prevent duplicate IDs if regenerated (unlikely)
+                    allUsers.push(currentUser); 
+                }
+                console.log("New User created (mock):", currentUser);
+                
+                if(aadhaarUserDisplayName) aadhaarUserDisplayName.textContent = currentUser.name; 
+                showPage('aadhaarPanPage');
+            });
+
+            if(loginButton) loginButton.addEventListener('click', () => {
+                const userId = loginUserIdInput.value.trim();
+                const password = loginPasswordInput.value.trim();
+                const foundUser = allUsers.find(u => u.id === userId && u.password === password);
+
+                if (foundUser) {
+                    currentUser = foundUser; 
+                    if(loginStatus) {
+                        loginStatus.textContent = `Logged in as ${currentUser.name}!`;
+                        loginStatus.style.color = '#10b981';
+                    }
+                    console.log("User logged in:", currentUser);
+                    
+                    if (currentUser.isVerified) {
+                        setTimeout(() => showPage('roleChoicePage'), 500);
+                        // If owner, immediately display their listings and requests upon logging in
+                        if (currentUser.role === 'owner') {
+                            setTimeout(() => {
+                                displayOwnerListings();
+                                displayOwnerRequests(); 
+                            }, 600); // Small delay after page transition
+                        }
+                    } else {
+                        if(aadhaarUserDisplayName) aadhaarUserDisplayName.textContent = currentUser.name; 
+                        setTimeout(() => showPage('aadhaarPanPage'), 500);
+                    }
+                } else {
+                    if(loginStatus) {
+                        loginStatus.textContent = "Invalid User ID or Password.";
+                        loginStatus.style.color = '#ef4444';
+                    }
+                    console.error("Login failed for ID:", userId);
+                }
+            });
+
+
+            if(sendOtpButton) sendOtpButton.addEventListener('click', () => {
+                if (!currentUser || !currentUser.phone) {
+                    showMessageBox("Please either 'Create New Account' or 'Log In' first to get your registered phone number.", "Authentication Required");
+                    if(otpStatus) otpStatus.textContent = ""; 
+                    if(verificationStatus) verificationStatus.textContent = ""; 
+                    console.error("Cannot send OTP: currentUser.phone is missing. User needs to complete login/account creation.");
+                    return;
+                }
+                if(otpStatus) {
+                    otpStatus.textContent = `OTP ${MOCK_OTP} sent to ${currentUser.phone}!`;
+                    otpStatus.style.color = '#10b981'; 
+                }
+            });
+
+            if(verifyContinueButton) verifyContinueButton.addEventListener('click', () => {
+                const enteredOtp = otpInput.value.trim();
+                const aadhaar = aadhaarNumber.value.trim();
+                const pan = panNumber.value.trim();
+
+                if (enteredOtp === MOCK_OTP && aadhaar && pan) {
+                    currentUser.aadhaar = aadhaar;
+                    currentUser.pan = pan;
+                    currentUser.isVerified = true; 
+                    
+                    // Populate ID Card details
+                    if(idCardName) idCardName.textContent = currentUser.name;
+                    if(idCardAge) idCardAge.textContent = currentUser.age;
+                    if(idCardGender) idCardGender.textContent = currentUser.gender;
+                    if(idCardEmail) idCardEmail.textContent = currentUser.email;
+                    if(idCardPhone) idCardPhone.textContent = currentUser.phone;
+                    if(idCardAadhaar) idCardAadhaar.textContent = currentUser.aadhaar;
+                    if(idCardPan) idCardPan.textContent = currentUser.pan;
+                    if(idCardUserId) idCardUserId.textContent = currentUser.id;
+                    if(idCardPassword) idCardPassword.textContent = currentUser.password; // Display mock password
+
+                    showMessageBox(`Verification successful! Your profile is now complete. Your User ID is: <strong>${currentUser.id}</strong> and Password is: <strong>${MOCK_PASSWORD}</strong>. Please remember these for login.`, "Account Verified!");
+
+                    if(verificationStatus) {
+                        verificationStatus.textContent = "Verification successful! Your profile is now complete.";
+                        verificationStatus.style.color = '#10b981';
+                    }
+                    console.log("Aadhaar/PAN verified:", currentUser); 
+                    setTimeout(() => showPage('idCardPage'), 1000); // Go to ID Card Page
+                } else {
+                    if(verificationStatus) {
+                        verificationStatus.textContent = "Verification failed. Please check OTP and details.";
+                        verificationStatus.style.color = '#ef4444';
+                    }
+                    console.error("Verification failed. Entered OTP:", enteredOtp, "Aadhaar:", aadhaar, "PAN:", pan);
+                }
+            });
+
+            if(proceedToRoleSelectionButton) {
+                proceedToRoleSelectionButton.addEventListener('click', () => {
+                    showPage('roleChoicePage');
+                });
+            }
+
+
+            if(chooseTenantButton) chooseTenantButton.addEventListener('click', () => {
+                if (!currentUser.isVerified) {
+                    showMessageBox("Please complete Aadhaar/PAN verification first!", "Verification Required");
+                    return;
+                }
+                currentUser.role = 'tenant';
+                showPage('tenantChatPage');
+                if(tenantChatHistory) tenantChatHistory.innerHTML = ''; 
+                addMessageToChat(tenantChatHistory, 'bot', `Hello, ${currentUser.name}! I'm your AI Flatmate Finder. Let's find your ideal shared accommodation. What's your ideal monthly budget for rent (e.g., ₹10,000-₹12,000)?`);
+                tenantChatState = CHAT_STATE.TENANT_ASK_BUDGET;
+                console.log("Role set to Tenant. Current User:", currentUser); 
+                // Check if tenant has approved requests and transition to final chat
+                const approvedRequestAsTenant = allRequests.find(req => req.tenantId === currentUser.id && req.status === 'approved');
+                if (approvedRequestAsTenant) {
+                    const ownerUser = allUsers.find(u => u.id === approvedRequestAsTenant.ownerId);
+                    const property = allProperties.find(p => p.id === approvedRequestAsTenant.propertyId);
+                    if (ownerUser && property) {
+                         setTimeout(() => {
+                            showPage('finalChatPage');
+                            if(document.getElementById('finalChatPartnerName')) document.getElementById('finalChatPartnerName').textContent = ownerUser.name;
+                            if(document.getElementById('finalChatPartnerName2')) document.getElementById('finalChatPartnerName2').textContent = ownerUser.name;
+                            if(document.getElementById('finalChatUserName')) document.getElementById('finalChatUserName').textContent = currentUser.name;
+                            if(document.getElementById('finalChatPartnerContact')) document.getElementById('finalChatPartnerContact').textContent = ownerUser.contact;
+                        }, 500);
+                    }
+                } else { // Only check for rejected if not approved
+                    const rejectedRequestAsTenant = allRequests.find(req => req.tenantId === currentUser.id && req.status === 'rejected' && req.rejectionMessage);
+                    if (rejectedRequestAsTenant) {
+                        addMessageToChat(tenantChatHistory, 'bot', rejectedRequestAsTenant.rejectionMessage);
+                        // Clear the rejection message after displaying it to prevent repeat notifications
+                        rejectedRequestAsTenant.rejectionMessage = null; 
+                    }
+                }
+            });
+
+            if(chooseOwnerButton) chooseOwnerButton.addEventListener('click', () => {
+                if (!currentUser.isVerified) {
+                    showMessageBox("Please complete Aadhaar/PAN verification first!", "Verification Required");
+                    return;
+                }
+                currentUser.role = 'owner';
+                showPage('ownerChatPage');
+                if(ownerChatHistory) ownerChatHistory.innerHTML = '';
+                addMessageToChat(ownerChatHistory, 'bot', `Hello, ${currentUser.name}! I'm your AI Flatmate Finder. Let's list your property. What's its full address, including city and landmark? (e.g., 123, Sector 18, Noida)`);
+                ownerChatState = CHAT_STATE.OWNER_ASK_PROPERTY_LOCATION;
+                currentPropertyBeingListed = { id: generateUniqueId(), ownerId: currentUser.id, ownerName: currentUser.name, contact: currentUser.phone, ownerPreferences: [] }; // Initialize ownerPreferences
+                console.log("Role set to Owner. Current User:", currentUser); 
+
+                // Immediately display owner's listings and requests upon logging in
+                setTimeout(() => {
+                    displayOwnerListings();
+                    displayOwnerRequests(); 
+                }, 100);
+            });
+
+            // Event listeners for chat inputs/buttons
+            if (document.getElementById('tenantSendButton')) { 
+                document.getElementById('tenantSendButton').addEventListener('click', () => {
+                    const userInput = document.getElementById('tenantChatInput').value.trim();
+                    if (userInput) {
+                        handleTenantChatInput(userInput);
+                    }
+                });
+            }
+            if (document.getElementById('tenantChatInput')) {
+                document.getElementById('tenantChatInput').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        document.getElementById('tenantSendButton').click();
+                    }
+                });
+            }
+            if (document.getElementById('ownerSendButton')) {
+                document.getElementById('ownerSendButton').addEventListener('click', () => {
+                    const userInput = document.getElementById('ownerChatInput').value.trim();
+                    if (userInput) {
+                        handleOwnerChatInput(userInput);
+                    }
+                });
+            }
+            if (document.getElementById('ownerChatInput')) {
+                document.getElementById('ownerChatInput').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        document.getElementById('ownerSendButton').click();
+                    }
+                });
+            }
+
+            // Initial page display
+            showPage('welcomePage');
+        });
+    </script>
+</body>
+</html>
